@@ -78,6 +78,11 @@ unsigned int cycles_reset = 1000;
 unsigned int cycles_to_start = 1000;
 unsigned int cycles_pga = 1000;
 
+//microcontroller variables 
+
+unsigned int counter =0 ; 
+unsigned int state =0; 
+
 void UART_ISR() {	
 	static char i=0;
 	static char buff[4] = {0x0, 0x0, 0x0, 0x0};
@@ -453,123 +458,95 @@ void RF_ISR() {
 }
 
 void RFTIMER_ISR() {
-	
-	
-	
-// COMPARE0 @ t=0
-// setFrequencyRX(channel);
-// 
-// Disable TX interrupts (turn them on only if RX is successful)
-// RFTIMER_REG__COMPARE3_CONTROL = 0x0;
-// RFTIMER_REG__COMPARE4_CONTROL = 0x0;
-
-// Enable RX watchdog
-// RFTIMER_REG__COMPARE2_CONTROL = 0x3;
-
-// COMPARE1 (t1) = Turn on the RX 
-// t0 = (expected - guard_time - radio_startup_time);
-// rxEnable();
-
-// COMPARE2 (t2) = Time to start listening for packet 
-// t1 = (expected_arrival - guard_time);
-// rxNow(); 
-
-// COMPARE3 (t3) = RX watchdog 
-// t2 = (t1 + 2 * guard_time);
-// radio_rfOff();
-// analog_scan_chain_load_3B_fromFPGA();
-
-// COMPARE4 (t4) = Turn on transmitter 
-// t3 = (expected_RX_arrival + ack_turnaround_time - radio_startup_time);
-// analog_scan_chain_load_3B_fromFPGA();
-// txEnable();
-
-// COMPARE5 (t5) = Transmit packet 
-// t4 = (expected_RX_arrival + ack_turnaround_time - radio_startup_time);
-// txNow();
 
 
-	
-	
-  
-	unsigned int interrupt = RFTIMER_REG__INT;
-	
-	if (interrupt & 0x00000001){ //printf("COMPARE0 MATCH\n");
-				
-		GPIO_REG__OUTPUT = 0x0;
-		
-		// Setup for reception, followed by tranmitting an ack
-		setFrequencyRX(current_RF_channel);
 
-		// Enable RX watchdog
-		RFTIMER_REG__COMPARE3_CONTROL = 0x3;
-		
-		// Disable TX interrupts (turn them on only if RX is successful)
-		RFTIMER_REG__COMPARE4_CONTROL = 0x0;
-		RFTIMER_REG__COMPARE5_CONTROL = 0x0;
-		
-	}
-	if (interrupt & 0x00000002){// printf("COMPARE1 MATCH\n");
-		
-		GPIO_REG__OUTPUT ^= 0x1;
-		
-		// Turn on the analog part of RX
-		radio_rxEnable();
-		
-	}
-	if (interrupt & 0x00000004){// printf("COMPARE2 MATCH\n");
-		
-		GPIO_REG__OUTPUT ^= 0x1;
-		
-		// Start listening for packet
-		radio_rxNow();
-				
-	}
-	if (interrupt & 0x00000008){// printf("COMPARE3 MATCH\n");
+ 
+unsigned int interrupt = RFTIMER_REG__INT;
+
+if (interrupt & 0x00000001){ //printf("COMPARE0 MATCH\n");
 	
-		GPIO_REG__OUTPUT |= 0x8;
-		GPIO_REG__OUTPUT &= ~(0x8);
-		
-		// Exit RX mode (so can reprogram on FPGA version)
-		analog_scan_chain_load();
-		
-		// Turn off the radio
-		radio_rfOff();
-		
-	}
-	if (interrupt & 0x00000010){// printf("COMPARE4 MATCH\n");
-		
-		GPIO_REG__OUTPUT ^= 0x1;
-		
-		// Switch over to TX
-		analog_scan_chain_load();
 	
-		// Turn on RF for TX
-		radio_txEnable();
-		
-	}
-	if (interrupt & 0x00000020){// printf("COMPARE5 MATCH\n");
-		
-		GPIO_REG__OUTPUT ^= 0x1;
-		
-		// Tranmit the packet
-		radio_txNow();
-		
-	}
-	if (interrupt & 0x00000040) printf("COMPARE6 MATCH\n");
-	if (interrupt & 0x00000080) printf("COMPARE7 MATCH\n");
-	if (interrupt & 0x00000100) printf("CAPTURE0 TRIGGERED AT: 0x%x\n", RFTIMER_REG__CAPTURE0);
-	if (interrupt & 0x00000200) printf("CAPTURE1 TRIGGERED AT: 0x%x\n", RFTIMER_REG__CAPTURE1);
-	if (interrupt & 0x00000400) printf("CAPTURE2 TRIGGERED AT: 0x%x\n", RFTIMER_REG__CAPTURE2);
-	if (interrupt & 0x00000800) printf("CAPTURE3 TRIGGERED AT: 0x%x\n", RFTIMER_REG__CAPTURE3);
-	if (interrupt & 0x00001000) printf("CAPTURE0 OVERFLOW AT: 0x%x\n", RFTIMER_REG__CAPTURE0);
-	if (interrupt & 0x00002000) printf("CAPTURE1 OVERFLOW AT: 0x%x\n", RFTIMER_REG__CAPTURE1);
-	if (interrupt & 0x00004000) printf("CAPTURE2 OVERFLOW AT: 0x%x\n", RFTIMER_REG__CAPTURE2);
-	if (interrupt & 0x00008000) printf("CAPTURE3 OVERFLOW AT: 0x%x\n", RFTIMER_REG__CAPTURE3);
+//RFTIMER_REG__COMPARE5 = 0x000001F4;
 	
-	RFTIMER_REG__INT_CLEAR = interrupt;
+counter +=1;
+
+if (state==0 && counter == 100){
+
+state = 1;
+GPIO_REG__OUTPUT = 0x0830;
+RFTIMER_REG__COMPARE1_CONTROL = 0x0;
+RFTIMER_REG__COMPARE2_CONTROL = 0x0;
+RFTIMER_REG__COMPARE3_CONTROL = 0x0;
+RFTIMER_REG__COMPARE4_CONTROL = 0x0;
+counter = 0;  
+//ICER = 0x2000;
+return;
+}
+if (state==1 && counter == 100){
+GPIO_REG__OUTPUT = 0x0800;
+state = 2;
+counter = 0;
+return;
+}
+if (state==2 && counter == 100){
+state = 3;
+counter = 0;
+return;
+}
+if (state==3 && counter == 100){
+state = 0;
+RFTIMER_REG__COMPARE1_CONTROL = 0x03;
+RFTIMER_REG__COMPARE2_CONTROL = 0x03;
+RFTIMER_REG__COMPARE3_CONTROL = 0x03;
+RFTIMER_REG__COMPARE4_CONTROL = 0x03;
+counter = 0;
+ISER = 0x2000; 
+return;
+}
 }
 
+if (interrupt & 0x00000002){// printf("COMPARE1 MATCH\n");
+
+GPIO_REG__OUTPUT ^= 0x10;
+
+
+}
+if (interrupt & 0x00000004){// printf("COMPARE2 MATCH\n");
+
+GPIO_REG__OUTPUT ^= 0x10;
+
+}
+if (interrupt & 0x00000008){// printf("COMPARE3 MATCH\n");
+
+GPIO_REG__OUTPUT ^=0x20;
+
+}
+if (interrupt & 0x00000010){// printf("COMPARE4 MATCH\n");
+
+GPIO_REG__OUTPUT ^=0x20;
+}
+if (interrupt & 0x00000020){// printf("COMPARE5 MATCH\n");
+
+	
+//GPIO_REG__OUTPUT ^= 0x0800;
+//
+//	RFTIMER_REG__COMPARE5 += 0x000001F4;
+
+}
+if (interrupt & 0x00000040) printf("COMPARE6 MATCH\n");
+if (interrupt & 0x00000080) printf("COMPARE7 MATCH\n");
+if (interrupt & 0x00000100) printf("CAPTURE0 TRIGGERED AT: 0x%x\n", RFTIMER_REG__CAPTURE0);
+if (interrupt & 0x00000200) printf("CAPTURE1 TRIGGERED AT: 0x%x\n", RFTIMER_REG__CAPTURE1);
+if (interrupt & 0x00000400) printf("CAPTURE2 TRIGGERED AT: 0x%x\n", RFTIMER_REG__CAPTURE2);
+if (interrupt & 0x00000800) printf("CAPTURE3 TRIGGERED AT: 0x%x\n", RFTIMER_REG__CAPTURE3);
+if (interrupt & 0x00001000) printf("CAPTURE0 OVERFLOW AT: 0x%x\n", RFTIMER_REG__CAPTURE0);
+if (interrupt & 0x00002000) printf("CAPTURE1 OVERFLOW AT: 0x%x\n", RFTIMER_REG__CAPTURE1);
+if (interrupt & 0x00004000) printf("CAPTURE2 OVERFLOW AT: 0x%x\n", RFTIMER_REG__CAPTURE2);
+if (interrupt & 0x00008000) printf("CAPTURE3 OVERFLOW AT: 0x%x\n", RFTIMER_REG__CAPTURE3);
+
+RFTIMER_REG__INT_CLEAR = interrupt;
+}
 
 // This ISR goes off when the raw chip shift register interrupt goes high
 // It reads the current 32 bits and then prints them out after N cycles
@@ -789,6 +766,23 @@ void INTERRUPT_GPIO8_ISR(){
 }
 void INTERRUPT_GPIO9_ISR(){
 	printf("External Interrupt GPIO9 triggered\n");
+	//state = 1; 
+	if (state ==0){
+	counter = 99; 
+	
+	RFTIMER_REG__COMPARE1_CONTROL = 0x0;
+	RFTIMER_REG__COMPARE2_CONTROL = 0x0;
+	RFTIMER_REG__COMPARE3_CONTROL = 0x0;
+	RFTIMER_REG__COMPARE4_CONTROL = 0x0;
+	
+	//GPIO_REG__OUTPUT |= 0x0200; 
+	//ICER = 0x2000; 
+	GPIO_REG__OUTPUT ^= 0x0400;
+	ICER = 0x2000;
+	}
+	else{
+		ICER = 0x2000; 
+	}
 }
 void INTERRUPT_GPIO10_ISR(){
 	printf("External Interrupt GPIO10 triggered\n");

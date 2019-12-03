@@ -16,7 +16,7 @@ from bootload import *
 
 
 if __name__ == "__main__":
-	programmer_port = "COM22"
+	programmer_port = "COM20"
 	scm_port = "COM29"
 
 	# Program SCM

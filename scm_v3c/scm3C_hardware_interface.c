@@ -1205,14 +1205,14 @@ void initialize_mote(){
 	set_ALWAYSON_LDO_voltage(0);
 		
 	// Select banks for GPIO inputs
-	// GPI_control(0,0,0,0);
+	 GPI_control(0,0,1,0);
 	
 	// // Select banks for GPIO outputs
-	// // GPO_control(6,5,6,0);
+	 GPO_control(10,6,6,6);
 	
 	// // Set all GPIOs as outputs
-	// GPI_enables(0x0000);	
-	// GPO_enables(0xFFFF);
+	 GPI_enables(0x0200);	
+	 GPO_enables(0xFDFF);
 
 
 	// Set initial coarse/fine on HF_CLOCK
